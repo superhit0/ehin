@@ -7,5 +7,5 @@ Build from Source:
 - Get Jar from target folder
 
 Using jar:
-- java -jar nefim-1-jar-with-dependencies.jar -k [int--size-of-k] -i [string-path--input-file] -o [string-path--output-file] -sup [boolean--activate-subtree-pruning] -tm [boolean--activate-transaction-merging] -c [int--maximum-transactions]
+- java -jar nefim-1-jar-with-dependencies.jar -min [int--minUtil] -i [string-path--input-file] -o [string-path--output-file] -sup [boolean--activate-subtree-pruning] -tm [boolean--activate-transaction-merging] -c [int--maximum-transactions]
 - Output Itemsets in output file and stats printed on console.
