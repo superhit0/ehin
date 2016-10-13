@@ -564,7 +564,8 @@ public class AlgoNEFIM {
 									
 									// make also the sum of transaction utility and prefix utility
 									previousTransaction.transactionUtility += projectedTransaction.transactionUtility;
-									previousTransaction.prefixUtility += projectedTransaction.prefixUtility;	
+									previousTransaction.prefixUtility += projectedTransaction.prefixUtility;
+									previousTransaction.positiveTransactionUtility+=projectedTransaction.positiveTransactionUtility;
 								}
 								// increment the number of consecutive transaction merged
 								consecutiveMergeCount++;
