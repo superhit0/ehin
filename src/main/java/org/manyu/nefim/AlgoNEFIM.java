@@ -3,11 +3,7 @@ package org.manyu.nefim;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 //import ca.pfv.spmf.tools.MemoryLogger;
 
@@ -39,6 +35,8 @@ public class AlgoNEFIM {
 
 	/** the set of high-utility itemsets */
     private Itemsets highUtilityItemsets;
+
+    private Set<Integer> negativeItems;
     
 	/** object to write the output file */
 	BufferedWriter writer = null;
@@ -131,12 +129,13 @@ public class AlgoNEFIM {
     	// save parameters about activating or not the optimizations
     	this.activateTransactionMerging = activateTransactionMerging;
     	this.activateSubtreeUtilityPruning = activateSubtreeUtilityPruning;
+    	negativeItems=new HashSet<>();
     	
 		// record the start time
 		startTimestamp = System.currentTimeMillis();
 		
 		// read the input file
-		Dataset dataset = new Dataset(inputPath, maximumTransactionCount);
+		Dataset dataset = new Dataset(inputPath, maximumTransactionCount, negativeItems);
 
 		// save minUtil value selected by the user
 		this.minUtil = minUtil;
@@ -155,7 +154,7 @@ public class AlgoNEFIM {
 		patternCount = 0;
 		
 		// reset the memory usage checking utility
-		MemoryLogger.getInstance().reset();
+		//MemoryLogger.getInstance().reset();
 		
 		// if in debug mode, show the initial database in the console
 		if(DEBUG)
@@ -361,10 +360,10 @@ public class AlgoNEFIM {
        	// If subtree utility pruning is activated
     	if(activateSubtreeUtilityPruning){
     		// We call the recursive algorithm with the database, secondary items and primary items
-    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToExplore, 0);
+    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToExplore, 0, 0);
     	}else{
     		// We call the recursive algorithm with the database and secondary items
-    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToKeep, 0);
+    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToKeep, 0, 0);
     	}
 
 		// record the end time
@@ -376,7 +375,7 @@ public class AlgoNEFIM {
 		}
 		
 		// check the maximum memory usage
-		MemoryLogger.getInstance().checkMemory();
+		//MemoryLogger.getInstance().checkMemory();
         
 		// return the set of high-utility itemsets
         return highUtilityItemsets;
@@ -433,7 +432,7 @@ public class AlgoNEFIM {
      * @throws IOException if error writing to output file
      */
     private void backtrackingEFIM( List<Transaction> transactionsOfP,
-    		List<Integer> itemsToKeep, List<Integer> itemsToExplore, int prefixLength) throws IOException {
+    		List<Integer> itemsToKeep, List<Integer> itemsToExplore, int prefixLength, int prefixUtility) throws IOException {
 
     	// update the number of candidates explored so far
 		candidateCount += itemsToExplore.size();
@@ -441,6 +440,9 @@ public class AlgoNEFIM {
         // ========  for each frequent item  e  =============
 		for (int j = 0; j < itemsToExplore.size(); j++) {
 			Integer e = itemsToExplore.get(j);
+
+			if(prefixUtility<=minUtil&&negativeItems.contains(e))
+				continue;
 
 			// ========== PERFORM INTERSECTION =====================
 			// Calculate transactions containing P U {e} 
@@ -545,7 +547,7 @@ public class AlgoNEFIM {
 									int sumUtilities = previousTransaction.prefixUtility += projectedTransaction.prefixUtility;
 									
 									// create the new transaction replacing the two merged transactions
-									previousTransaction = new Transaction(items, utilities, previousTransaction.transactionUtility + projectedTransaction.transactionUtility, previousTransaction.positiveTransactionUtility + projectedTransaction.positiveTransactionUtility);
+									previousTransaction = new Transaction(items, utilities, previousTransaction.transactionUtility + projectedTransaction.transactionUtility);
 									previousTransaction.prefixUtility = sumUtilities;	
 	
 								}else{
@@ -564,8 +566,7 @@ public class AlgoNEFIM {
 									
 									// make also the sum of transaction utility and prefix utility
 									previousTransaction.transactionUtility += projectedTransaction.transactionUtility;
-									previousTransaction.prefixUtility += projectedTransaction.prefixUtility;
-									previousTransaction.positiveTransactionUtility+=projectedTransaction.positiveTransactionUtility;
+									previousTransaction.prefixUtility += projectedTransaction.prefixUtility;	
 								}
 								// increment the number of consecutive transaction merged
 								consecutiveMergeCount++;
@@ -633,9 +634,9 @@ public class AlgoNEFIM {
 			// for each item
 	    	for (int k = j+1; k < itemsToKeep.size(); k++) {
 	        	Integer itemk =  itemsToKeep.get(k);
-	        	
+	        	boolean contains=negativeItems.contains(itemk);
 	        	// if the sub-tree utility is no less than min util
-	            if(utilityBinArraySU[itemk] >= minUtil) {
+	            if(contains||utilityBinArraySU[itemk] >= minUtil) {
 	            	// and if sub-tree utility pruning is activated
 	            	if(activateSubtreeUtilityPruning){
 	            		// consider that item as a primary item
@@ -643,29 +644,30 @@ public class AlgoNEFIM {
 	            	}
 	            	// consider that item as a secondary item
 	            	newItemsToKeep.add(itemk);
-	            }else if(utilityBinArrayLU[itemk] >= minUtil)
+	            }else if(contains||utilityBinArrayLU[itemk] >= minUtil)
 	            {
 	            	// otherwise, if local utility is no less than minutil,
 	            	// consider this itemt to be a secondary item
 	            	newItemsToKeep.add(itemk);
 	            }
 	        }
+
 	    	// update the total time  for identifying promising items
 	    	timeIdentifyPromisingItems +=  (System.currentTimeMillis() -  initialTime);
 			
 			// === recursive call to explore larger itemsets
 	    	if(activateSubtreeUtilityPruning){
 	    		// if sub-tree utility pruning is activated, we consider primary and secondary items
-	    		backtrackingEFIM(transactionsPe, newItemsToKeep, newItemsToExplore,prefixLength+1);
+	    		backtrackingEFIM(transactionsPe, newItemsToKeep, newItemsToExplore,prefixLength+1,utilityPe);
 	    	}else{
 	    		// if sub-tree utility pruning is deactivated, we consider secondary items also
 	    		// as primary items
-	    		backtrackingEFIM(transactionsPe, newItemsToKeep, newItemsToKeep,prefixLength+1);
+	    		backtrackingEFIM(transactionsPe, newItemsToKeep, newItemsToKeep,prefixLength+1,utilityPe);
 	    	}
 		}
 
 		// check the maximum memory usage for statistics purpose
-		MemoryLogger.getInstance().checkMemory();
+		//MemoryLogger.getInstance().checkMemory();
     }
 
 
@@ -719,7 +721,7 @@ public class AlgoNEFIM {
 			// for each item
 			for(Integer item: transaction.getItems()) {
 				// we add the transaction utility to the utility bin of the item
-				utilityBinArrayLU[item] += transaction.positiveTransactionUtility;
+				utilityBinArrayLU[item] += transaction.transactionUtility;
 			}
 		}
 	}
@@ -791,6 +793,9 @@ public class AlgoNEFIM {
 			for (int i = transaction.getItems().length - 1; i >= transaction.offset; i--) {
 				// get the item
 				int item = transaction.getItems()[i];
+
+				if(negativeItems.contains(item))
+					continue;
 				
 				// We will check if this item is promising using a binary search over promising items.
 
@@ -820,7 +825,7 @@ public class AlgoNEFIM {
 					// We update the sub-tree utility of that item in its utility-bin
 					utilityBinArraySU[item] += sumRemainingUtility + transaction.prefixUtility;
 					// We update the local utility of that item in its utility-bin
-					utilityBinArrayLU[item] += transaction.positiveTransactionUtility + transaction.prefixUtility;
+					utilityBinArrayLU[item] += transaction.transactionUtility + transaction.prefixUtility;
 				}
 			}
 		}
@@ -896,7 +901,7 @@ public class AlgoNEFIM {
 					+ " ms");
 			System.out.println(" Time sort ~: " + timeSort	+ " ms");
 		}
-		System.out.println(" Max memory:" + MemoryLogger.getInstance().getMaxMemory());
+		//System.out.println(" Max memory:" + MemoryLogger.getInstance().getMaxMemory());
 		System.out.println(" Candidate count : "             + candidateCount);
 		System.out.println("=====================================");
 	}

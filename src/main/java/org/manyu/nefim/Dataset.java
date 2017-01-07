@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 /* This file is copyright (c) 2012-2015 Souleymane Zida, Philippe Fournier-Viger, Alan Souza
 * 
 * This file is part of the SPMF DATA MINING SOFTWARE
@@ -40,7 +41,7 @@ public class Dataset {
 	 * @param maximumTransactionCount the number of transaction to be read from the input file
 	 * @throws IOException exception if error reading the file
 	 */
-    public Dataset(String datasetPath, int maximumTransactionCount) throws IOException {
+    public Dataset(String datasetPath, int maximumTransactionCount, Set<Integer> negativeItems) throws IOException {
 
     	// Initialize a list to store transactions in memory
         transactions = new ArrayList<Transaction>();
@@ -58,7 +59,7 @@ public class Dataset {
 			}
 			i++;
 			// read the transaction
-			transactions.add(createTransaction(line));
+			transactions.add(createTransaction(line,negativeItems));
 			// if the number of transaction to be read is reached, we stop
         	if(i==maximumTransactionCount) {
         		break;
@@ -75,7 +76,7 @@ public class Dataset {
      * @param line a line from input file
      * @return a transaction
      */
-    private Transaction createTransaction(String line) {
+    private Transaction createTransaction(String line, Set<Integer> negativeItems) {
     	// split the line into tokens according to the ":" separator
     	String[] split = line.split(":");
     	
@@ -92,8 +93,6 @@ public class Dataset {
         int[] items = new  int[itemsString.length];
         int[] utilities = new  int[itemsString.length];
 
-        int positiveTransactionUtility=0;
-
         // for each item
         for (int i = 0; i < items.length; i++) {
         	//store the item
@@ -102,8 +101,8 @@ public class Dataset {
         	// store its utility in that transaction
         	utilities[i] = Integer.parseInt(itemsUtilitiesString[i]);
 
-            if(utilities[i]>0)
-                positiveTransactionUtility+=utilities[i];
+        	if(utilities[i]<0)
+        	    negativeItems.add(items[i]);
             
             // if the item name is larger than the largest item read from the database until now, we remember
         	// its name
@@ -113,7 +112,7 @@ public class Dataset {
         }
 
 		// create the transaction object for this transaction and return it
-		return new Transaction(items, utilities, transactionUtility, positiveTransactionUtility);
+		return new Transaction(items, utilities, transactionUtility);
     }
 
     /**

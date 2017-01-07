@@ -38,8 +38,7 @@ public class Transaction {
     int[] utilities;
     
     /** the transaction utility of the transaction or projected transaction */
-     int transactionUtility;
-	 int positiveTransactionUtility;
+     int transactionUtility; 
      
      /** the profit of a given prefix in this transaction (initially 0 if a transaction is not projected)*/
      int prefixUtility;
@@ -56,21 +55,8 @@ public class Transaction {
     	this.transactionUtility = transactionUtility;
     	this.offset = 0;
     	this.prefixUtility = 0;
-        for(int i=0;i<items.length;i++){
-            if(utilities[i]>0){
-                positiveTransactionUtility +=utilities[i];
-            }
-        }
     }
-
-    public Transaction(int[] items, int[] utilities, int transactionUtility, int positiveTransactionUtility) {
-        this.items = items;
-        this.utilities = utilities;
-        this.transactionUtility = transactionUtility;
-        this.offset = 0;
-        this.prefixUtility = 0;
-        this.positiveTransactionUtility=positiveTransactionUtility;
-    }
+    
     
     /**
      * Constructor for a projected transaction
@@ -91,17 +77,13 @@ public class Transaction {
     	
     	// we will now calculate the remaining utility.
     	// It is the transaction utility minus the profit of the element that was removed
+		if(utilityE>0)
     	this.transactionUtility = transaction.transactionUtility - utilityE;
-        this.positiveTransactionUtility =transaction.positiveTransactionUtility;
-        if(utilityE>0)
-            this.positiveTransactionUtility-=utilityE;
     	// and we also need to subtract the utility of all items before e
     	// but after the previous offset
     	for(int i = transaction.offset; i < offsetE; i++){
+    		if(transaction.utilities[i]>0)
     		this.transactionUtility -= transaction.utilities[i];
-            if(transaction.utilities[i]>=0){
-                this.positiveTransactionUtility-=transaction.utilities[i];
-            }
     	}
     	// remember the offset for this projected transaction
     	this.offset = offsetE+1;
@@ -176,6 +158,7 @@ public class Transaction {
     			i++;
     		}else{
     			// else subtract the utility of the item
+				if(utilities[j]>=0)
     			transactionUtility -= utilities[j];
     		}
     	}

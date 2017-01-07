@@ -1,4 +1,5 @@
 package org.manyu.nefim;
+
 import java.util.List;
 
 
@@ -62,7 +63,7 @@ public class Itemset {
 		this.itemset = items;
 	}
 	
-	/**
+	/*
 	 * Constructor 
 	 * @param items a list of Integer representing items in the itemset
 	 * @param utility the utility of the itemset
