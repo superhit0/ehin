@@ -37,6 +37,7 @@ public class AlgoNEFIM {
     private Itemsets highUtilityItemsets;
 
     private List<Integer> globalItemsToKeep;
+    private List<Integer> globalNegativeItemsToKeep;
 
     private int negativeOffset=0;
 
@@ -383,6 +384,8 @@ public class AlgoNEFIM {
             }
         }
 
+        globalNegativeItemsToKeep=globalItemsToKeep.subList(negativeOffset,globalItemsToKeep.size());
+
         if(DEBUG){
             System.out.println("===== Negative Offset === ");
             System.out.println(negativeItems);
@@ -656,7 +659,14 @@ public class AlgoNEFIM {
 	        }
 
 	        if(utilityPe>minUtil){
-	            negativeEFIM(transactionsPe, globalItemsToKeep.subList(negativeOffset,globalItemsToKeep.size()),prefixLength+1,0);
+	        	useUtilityBinArraysToCalculateUpperBoundsNegative(transactionsPe,-1,globalNegativeItemsToKeep);
+	        	List<Integer> promisingNegativeItems=new ArrayList<>();
+	        	for(Integer item:globalNegativeItemsToKeep){
+	        		if(utilityBinArraySU[item]>=minUtil)
+	        			promisingNegativeItems.add(item);
+				}
+				negativeEFIM(transactionsPe,promisingNegativeItems,prefixLength+1,0);
+	            //negativeEFIM(transactionsPe, globalItemsToKeep.subList(negativeOffset,globalItemsToKeep.size()),prefixLength+1,0);
             }
 
 	        //boolean recur=false;
@@ -751,14 +761,79 @@ public class AlgoNEFIM {
             if(utilityPe>=minUtil){
                 output(prefixLength,utilityPe);
             }
+			useUtilityBinArraysToCalculateUpperBoundsNegative(transactionsPe,i,promisingNegativeItems);
+            List<Integer> newpromisingNegativeItems=new ArrayList<>();
+            for(Integer ii:promisingNegativeItems){
+            	if(utilityBinArraySU[ii]>=minUtil)
+            		newpromisingNegativeItems.add(ii);
+			}
             if(utilityPe>=minUtil){
-                negativeEFIM(transactionsPe,promisingNegativeItems,prefixLength+1,pos+1);
+                negativeEFIM(transactionsPe,newpromisingNegativeItems,prefixLength+1,pos+1);
             }
         }
     }
 
+	private void useUtilityBinArraysToCalculateUpperBoundsNegative(List<Transaction> transactionsPe, int j, List<Integer> promisingNegativeItems) {
+		for (int i = j + 1; i < promisingNegativeItems.size(); i++) {
+			Integer item = promisingNegativeItems.get(i);
+			// We reset the utility bins of that item for computing the sub-tree utility and
+			// local utility
+			utilityBinArraySU[item] = 0;
+		}
+		int sumRemainingUtility;
+		// for each transaction
+		for (Transaction transaction : transactionsPe) {
+			// count the number of transactions read
+			transactionReadingCount++;
 
-    /**
+			// We reset the sum of reamining utility to 0;
+			sumRemainingUtility = 0;
+			// we set high to the last promising item for doing the binary search
+			int high = promisingNegativeItems.size() - 1;
+
+			// for each item in the transaction that is greater than i when reading the transaction backward
+			// Note: >= is correct here. It should not be >.
+			for (int i = transaction.items.length-1; i >= Math.max(transaction.offset,transaction.negLow); i--) {
+				// get the item
+				int item = transaction.getItems()[i];
+
+				//if(negativeItems.contains(newNamesToOldNames[item]))
+				//	continue;
+
+				// We will check if this item is promising using a binary search over promising items.
+
+				// This variable will be used as a flag to indicate that we found the item or not using the binary search
+				boolean contains = false;
+				// we set "low" for the binary search to the first promising item position
+				int low = 0;
+
+				// do the binary search
+				while (high >= low) {
+					int middle = (low + high) >>> 1; // divide by 2
+					int itemMiddle = promisingNegativeItems.get(middle);
+					if (itemMiddle == item) {
+						// if we found the item, then we stop
+						contains = true;
+						break;
+					} else if (itemMiddle < item) {
+						low = middle + 1;
+					} else {
+						high = middle - 1;
+					}
+				}
+				// if the item is promising
+				if (contains) {
+					// We add the utility of this item to the sum of remaining utility
+					//sumRemainingUtility += transaction.getUtilities()[i];
+					// We update the sub-tree utility of that item in its utility-bin
+					utilityBinArraySU[item] += transaction.getUtilities()[i] + transaction.prefixUtility;
+				}
+			}
+		}
+	}
+
+
+	/**
      * Check if two transaction are identical
      * @param t1  the first transaction
      * @param t2  the second transaction
