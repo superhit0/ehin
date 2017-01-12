@@ -17,6 +17,9 @@ package org.manyu.nefim;
 * SPMF. If not, see <http://www.gnu.org/licenses/>.
 */
 
+import java.util.Arrays;
+import java.util.Comparator;
+
 /**
  * This class represents a transaction
 * 
@@ -43,6 +46,9 @@ public class Transaction {
      /** the profit of a given prefix in this transaction (initially 0 if a transaction is not projected)*/
      int prefixUtility;
 
+     int posLow;
+     int negLow;
+
      /**
       * Constructor of a transaction
       * @param items the items in the transaction
@@ -55,10 +61,22 @@ public class Transaction {
     	this.transactionUtility = transactionUtility;
     	this.offset = 0;
     	this.prefixUtility = 0;
+    	calcLows(items,utilities);
     }
-    
-    
-    /**
+
+	private void calcLows(int[] items, int[] utilities) {
+    	posLow=0;
+    	negLow=items.length;
+    	for(int i=0;i<items.length;i++){
+    		if(utilities[i]<0) {
+				negLow = i;
+				break;
+			}
+		}
+	}
+
+
+	/**
      * Constructor for a projected transaction
      * @param transaction the transaction that will be projected (it may be an original transaction
      * or a previously projected transaction
@@ -68,6 +86,8 @@ public class Transaction {
     	// copy items and utilities from the original transaction
     	this.items = transaction.getItems();
     	this.utilities = transaction.getUtilities();
+    	this.posLow = transaction.posLow;
+    	this.negLow = transaction.negLow;
     	
     	// copy the utility of element e
     	int utilityE = this.utilities[offsetE];
@@ -88,6 +108,20 @@ public class Transaction {
     	// remember the offset for this projected transaction
     	this.offset = offsetE+1;
     }
+
+    public Transaction(Transaction transaction, int offsetE, boolean negative){
+		this.items = transaction.getItems();
+		this.utilities = transaction.getUtilities();
+		this.posLow = transaction.posLow;
+		this.negLow = transaction.negLow;
+
+		// copy the utility of element e
+		int utilityE = this.utilities[offsetE];
+
+		// add the  utility of item e to the utility of the whole prefix used to project the transaction
+		this.prefixUtility = transaction.prefixUtility + utilityE;
+		this.offset=offsetE+1;
+	}
     
     /**
      * Get a string representation of this transaction
@@ -102,6 +136,7 @@ public class Transaction {
 		 }
 		 buffer.append(" Remaining Utility:" +transactionUtility);
 		 buffer.append(" Prefix Utility:" + prefixUtility);
+		 buffer.append(" Negative Low:" + negLow);
 		 return buffer.toString();
 	}
  
@@ -129,7 +164,7 @@ public class Transaction {
      * @return the last position (the number of items -1 )
      */
     public int getLastPosition(){
-    	return items.length -1;
+    	return negLow -1;
     }
 
     /**
@@ -171,7 +206,28 @@ public class Transaction {
     	System.arraycopy(tempUtilities, 0, this.utilities, 0, i);
     	
     	// Sort by increasing TWU values
-    	insertionSort(this.items, this.utilities);
+    	//insertionSort(this.items, this.utilities);
+		Item tempItem[]=new Item[i];
+		for(int x=0;x<i;x++){
+			tempItem[x]=new Item(items[x],utilities[x]);
+		}
+		Arrays.sort(tempItem, new Comparator<Item>() {
+			@Override
+			public int compare(Item o1, Item o2) {
+				if(o1.utility>=0&&o2.utility<0)
+					return -1;
+				else if(o1.utility<0&&o2.utility>=0)
+					return 1;
+				else{
+					return o1.item-o2.item;
+				}
+			}
+		});
+		for(int x=0;x<i;x++){
+			items[x]=tempItem[x].item;
+			utilities[x]=tempItem[x].utility;
+		}
+		calcLows(items,utilities);
 	}
 	
 	/**

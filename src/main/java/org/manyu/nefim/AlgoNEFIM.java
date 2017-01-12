@@ -36,6 +36,10 @@ public class AlgoNEFIM {
 	/** the set of high-utility itemsets */
     private Itemsets highUtilityItemsets;
 
+    private List<Integer> globalItemsToKeep;
+
+    private int negativeOffset=0;
+
     private Set<Integer> negativeItems;
     
 	/** object to write the output file */
@@ -185,9 +189,6 @@ public class AlgoNEFIM {
 	   			itemsToKeep.add(j);
 	   		}
 	   	}
-	   	
-	  // Sort promising items according to the increasing order of TWU
-	   insertionSort(itemsToKeep, utilityBinArrayLU);
        
 	   // Rename promising items according to the increasing order of TWU.
 	   // This will allow very fast comparison between items later by the algorithm
@@ -211,6 +212,22 @@ public class AlgoNEFIM {
 		   // increment by one the current name so that 
 		   currentName++;
 	   }
+
+        // Sort promising items according to the increasing order of TWU
+        //insertionSort(itemsToKeep, utilityBinArrayLU);
+        Collections.sort(itemsToKeep, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                boolean c1=negativeItems.contains(newNamesToOldNames[o1]);
+                boolean c2=negativeItems.contains(newNamesToOldNames[o2]);
+                if(c1&&!c2)
+                    return 1;
+                else if(!c1&&c2)
+                    return -1;
+                else
+                    return o1-o2;
+            }
+        });
        
         // remember the number of promising item
 		newItemCount = itemsToKeep.size();
@@ -253,11 +270,11 @@ public class AlgoNEFIM {
 				public int compare(Transaction t1, Transaction t2) {
 					// we will compare the two transaction items by items starting
 					// from the last items.
-					int pos1 = t1.items.length - 1;
-					int pos2 = t2.items.length - 1;
+					int pos1 = t1.negLow - 1;
+					int pos2 = t2.negLow - 1;
 					
 					// if the first transaction is smaller than the second one
-					if(t1.items.length < t2.items.length){
+					if(t1.negLow < t2.negLow){
 						// while the current position in the first transaction is >0
 						while(pos1 >=0){
 							int subtraction = t2.items[pos2]  - t1.items[pos1];
@@ -271,7 +288,7 @@ public class AlgoNEFIM {
 						return -1;
 						
 					// else if the second transaction is smaller than the first one
-					}else if (t1.items.length > t2.items.length){
+					}else if (t1.negLow > t2.negLow){
 						// while the current position in the second transaction is >0
 						while(pos2 >=0){
 							int subtraction = t2.items[pos2]  - t1.items[pos1];
@@ -353,17 +370,35 @@ public class AlgoNEFIM {
     	{
 	       	System.out.println("===== List of promising items === ");
 	       	System.out.println(itemsToKeep);
+            System.out.println(itemsToExplore);
     	}
+    	globalItemsToKeep=new ArrayList<>(itemsToKeep);
+
+    	negativeOffset=itemsToKeep.size();
+
+    	for(int i=0;i<itemsToKeep.size();i++){
+		    if(negativeItems.contains(newNamesToOldNames[itemsToKeep.get(i)])){
+		        negativeOffset=i;
+		        break;
+            }
+        }
+
+        if(DEBUG){
+            System.out.println("===== Negative Offset === ");
+            System.out.println(negativeItems);
+            System.out.println(negativeOffset);
+			System.out.println(itemsToKeep.subList(0,negativeOffset));
+		}
 
 //    	//======
         // Recursive call to the algorithm
        	// If subtree utility pruning is activated
     	if(activateSubtreeUtilityPruning){
     		// We call the recursive algorithm with the database, secondary items and primary items
-    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToExplore, 0, 0);
+    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep.subList(0,negativeOffset), itemsToExplore, 0, 0);
     	}else{
     		// We call the recursive algorithm with the database and secondary items
-    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep, itemsToKeep, 0, 0);
+    		backtrackingEFIM(dataset.getTransactions(), itemsToKeep.subList(0,negativeOffset), itemsToKeep.subList(0,negativeOffset), 0, 0);
     	}
 
 		// record the end time
@@ -440,9 +475,10 @@ public class AlgoNEFIM {
         // ========  for each frequent item  e  =============
 		for (int j = 0; j < itemsToExplore.size(); j++) {
 			Integer e = itemsToExplore.get(j);
+			//Boolean isNegative=negativeItems.contains(newNamesToOldNames[e]);
 
-			if(prefixUtility<=minUtil&&negativeItems.contains(e))
-				continue;
+			//if(prefixUtility<=minUtil&&isNegative)
+				//continue;
 
 			// ========== PERFORM INTERSECTION =====================
 			// Calculate transactions containing P U {e} 
@@ -473,7 +509,7 @@ public class AlgoNEFIM {
 	        	int positionE = -1;
 	        	// Variables low and high for binary search
 	    		int low = transaction.offset;
-	    		int high = transaction.items.length - 1;
+	    		int high = transaction.negLow-1;
 
 	    		// perform binary search to find e in the transaction
 	    		while (high >= low ) {
@@ -503,7 +539,7 @@ public class AlgoNEFIM {
 	 
 	            	// optimization: if the 'e' is the last one in this transaction,
 	            	// we don't keep the transaction
-					if(transaction.getLastPosition() == positionE){
+					if(false&&transaction.getLastPosition() == positionE){
 						// but we still update the sum of the utility of P U {e}
 						utilityPe  += transaction.utilities[positionE] + transaction.prefixUtility;
 					}else{
@@ -619,9 +655,15 @@ public class AlgoNEFIM {
 	        	output(prefixLength, utilityPe );
 	        }
 
+	        if(utilityPe>minUtil){
+	            negativeEFIM(transactionsPe, globalItemsToKeep.subList(negativeOffset,globalItemsToKeep.size()),prefixLength+1,0);
+            }
+
+	        //boolean recur=false;
+
 			//==== Next, we will calculate the Local Utility and Sub-tree utility of
 	        // all items that could be appended to PU{e} ====
-	        useUtilityBinArraysToCalculateUpperBounds(transactionsPe, j, itemsToKeep);  
+	        useUtilityBinArraysToCalculateUpperBounds(transactionsPe, j, itemsToKeep);
 			
 	        // we now record time for identifying promising items
 			long initialTime = System.currentTimeMillis();
@@ -634,9 +676,9 @@ public class AlgoNEFIM {
 			// for each item
 	    	for (int k = j+1; k < itemsToKeep.size(); k++) {
 	        	Integer itemk =  itemsToKeep.get(k);
-	        	boolean contains=negativeItems.contains(itemk);
+	        	//boolean contains=negativeItems.contains(newNamesToOldNames[itemk]);
 	        	// if the sub-tree utility is no less than min util
-	            if(contains||utilityBinArraySU[itemk] >= minUtil) {
+	            if(utilityBinArraySU[itemk] >= minUtil) {
 	            	// and if sub-tree utility pruning is activated
 	            	if(activateSubtreeUtilityPruning){
 	            		// consider that item as a primary item
@@ -644,7 +686,7 @@ public class AlgoNEFIM {
 	            	}
 	            	// consider that item as a secondary item
 	            	newItemsToKeep.add(itemk);
-	            }else if(contains||utilityBinArrayLU[itemk] >= minUtil)
+	            }else if(utilityBinArrayLU[itemk] >= minUtil)
 	            {
 	            	// otherwise, if local utility is no less than minutil,
 	            	// consider this itemt to be a secondary item
@@ -662,12 +704,57 @@ public class AlgoNEFIM {
 	    	}else{
 	    		// if sub-tree utility pruning is deactivated, we consider secondary items also
 	    		// as primary items
+                //if(recur)
 	    		backtrackingEFIM(transactionsPe, newItemsToKeep, newItemsToKeep,prefixLength+1,utilityPe);
 	    	}
 		}
 
 		// check the maximum memory usage for statistics purpose
 		//MemoryLogger.getInstance().checkMemory();
+    }
+
+    private void negativeEFIM(List<Transaction> transactionsP, List<Integer> promisingNegativeItems, int prefixLength, int pos) throws IOException {
+		//36 39 44 52 55 63 86 90 93
+//    	if(temp[0]==36&&temp[1]==39&&temp[2]==44&&temp[3]==52&&temp[4]==55&&temp[5]==63&&temp[6]==86&&temp[7]==90&&temp[8]==93){
+//			System.out.println(transactionsP);
+//		}
+		for(int i=pos;i<promisingNegativeItems.size();i++){
+            int itemE=promisingNegativeItems.get(i);
+            int utilityPe=0;
+            List<Transaction> transactionsPe=new ArrayList<>();
+            for(Transaction transaction:transactionsP){
+                if(transaction.getItems().length==transaction.negLow)
+                    continue;
+                int low=Math.max(transaction.offset,transaction.negLow);
+                int high=transaction.getItems().length-1;
+                boolean contains=false;
+                int itemEPos=-1;
+                while(low<=high){
+                    int mid=(low+high)/2;
+                    if(transaction.getItems()[mid]==itemE){
+                        contains=true;
+                        itemEPos=mid;
+                        break;
+                    }else if(transaction.getItems()[mid]<itemE){
+                        low=mid+1;
+                    }else{
+                        high=mid-1;
+                    }
+                }
+                if(contains){
+                    Transaction t=new Transaction(transaction,itemEPos,false);
+                    utilityPe+=t.prefixUtility;
+                    transactionsPe.add(t);
+                }
+            }
+            temp[prefixLength]=newNamesToOldNames[itemE];
+            if(utilityPe>=minUtil){
+                output(prefixLength,utilityPe);
+            }
+            if(utilityPe>=minUtil){
+                negativeEFIM(transactionsPe,promisingNegativeItems,prefixLength+1,pos+1);
+            }
+        }
     }
 
 
@@ -743,7 +830,7 @@ public class AlgoNEFIM {
 			sumSU = 0;
 
 			// For each item when reading the transaction backward
-    	   for(int i = transaction.getItems().length-1; i >=0; i--) {
+    	   for(int i = transaction.negLow-1; i >=0; i--) {
     		   // get the item
     		   Integer item = transaction.getItems()[i];
 
@@ -790,12 +877,12 @@ public class AlgoNEFIM {
 
 			// for each item in the transaction that is greater than i when reading the transaction backward
 			// Note: >= is correct here. It should not be >.
-			for (int i = transaction.getItems().length - 1; i >= transaction.offset; i--) {
+			for (int i = transaction.negLow - 1; i >= transaction.offset; i--) {
 				// get the item
 				int item = transaction.getItems()[i];
 
-				if(negativeItems.contains(item))
-					continue;
+				//if(negativeItems.contains(newNamesToOldNames[item]))
+				//	continue;
 				
 				// We will check if this item is promising using a binary search over promising items.
 
