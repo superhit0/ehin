@@ -159,7 +159,7 @@ public class AlgoNEFIM {
 		patternCount = 0;
 		
 		// reset the memory usage checking utility
-		//MemoryLogger.getInstance().reset();
+		MemoryLogger.getInstance().reset();
 		
 		// if in debug mode, show the initial database in the console
 		if(DEBUG)
@@ -413,7 +413,7 @@ public class AlgoNEFIM {
 		}
 		
 		// check the maximum memory usage
-		//MemoryLogger.getInstance().checkMemory();
+		MemoryLogger.getInstance().checkMemory();
         
 		// return the set of high-utility itemsets
         return highUtilityItemsets;
@@ -720,7 +720,7 @@ public class AlgoNEFIM {
 		}
 
 		// check the maximum memory usage for statistics purpose
-		//MemoryLogger.getInstance().checkMemory();
+		MemoryLogger.getInstance().checkMemory();
     }
 
     private void negativeEFIM(List<Transaction> transactionsP, List<Integer> promisingNegativeItems, int prefixLength, int pos) throws IOException {
@@ -1063,7 +1063,7 @@ public class AlgoNEFIM {
 					+ " ms");
 			System.out.println(" Time sort ~: " + timeSort	+ " ms");
 		}
-		//System.out.println(" Max memory:" + MemoryLogger.getInstance().getMaxMemory());
+		System.out.println(" Max memory:" + MemoryLogger.getInstance().getMaxMemory());
 		System.out.println(" Candidate count : "             + candidateCount);
 		System.out.println("=====================================");
 	}
