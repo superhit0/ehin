@@ -1,4 +1,7 @@
-# ehin
+# EHIN
+
+## Citation- [Wiley Online Library](https://onlinelibrary.wiley.com/doi/pdf/10.1111/exsy.12296)
+## Paper Link- [EHIN](https://drive.google.com/file/d/14YiZnw4CQBdnRY38JryR5XjaC7i1a2U6/view?usp=sharing)
 
 Build from Source:
 - Go to Source Directory.
