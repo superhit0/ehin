@@ -1,4 +1,4 @@
-package org.manyu.nefim;
+package org.manyu.ehin;
 
 /* This file is copyright (c) 2008-2012 Philippe Fournier-Viger
 * 

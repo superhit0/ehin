@@ -1,4 +1,4 @@
-package org.manyu.nefim;
+package org.manyu.ehin;
 
 import org.apache.commons.cli.*;
 
@@ -12,7 +12,7 @@ public class App
 {
     public static void main( String[] args )
     {
-        AlgoNEFIM obj =new AlgoNEFIM();
+        AlgoEHIN obj =new AlgoEHIN();
         CommandLine commandLine;
         Options options = new Options();
         CommandLineParser parser = new DefaultParser();

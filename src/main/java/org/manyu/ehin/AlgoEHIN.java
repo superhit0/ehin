@@ -1,4 +1,4 @@
-package org.manyu.nefim;
+package org.manyu.ehin;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -31,7 +31,7 @@ import java.util.*;
  *
  * @author Souleymane Zida, Philippe Fournier-Viger using some code by Alan Souza
  */
-public class AlgoNEFIM {
+public class AlgoEHIN {
 
 	/** the set of high-utility itemsets */
     private Itemsets highUtilityItemsets;
@@ -108,7 +108,7 @@ public class AlgoNEFIM {
 	/** 
 	 * Constructor
 	 */
-    public AlgoNEFIM() {
+    public AlgoEHIN() {
          
     }
 

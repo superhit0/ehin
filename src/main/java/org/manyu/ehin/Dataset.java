@@ -1,4 +1,4 @@
-package org.manyu.nefim;
+package org.manyu.ehin;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -25,7 +25,7 @@ import java.util.Set;
  * This is the parser class for the dataset.
  * It has actions related to parse a txt based file to a Dataset class.
  *
- * @see AlgoNEFIM
+ * @see AlgoEHIN
  */
 public class Dataset {
 
